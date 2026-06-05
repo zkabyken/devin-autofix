@@ -67,6 +67,17 @@ class HttpDevinClient:
         except (httpx.HTTPError, ValueError, KeyError):
             return None
 
+    def get_usage_metrics(self) -> dict | None:
+        try:
+            response = self._client.get(
+                f"/v3/metrics/organizations/{self._org_id}/usage"
+            )
+            response.raise_for_status()
+            payload = response.json()
+            return payload if isinstance(payload, dict) else None
+        except (httpx.HTTPError, ValueError):
+            return None
+
     def close(self) -> None:
         self._client.close()
 

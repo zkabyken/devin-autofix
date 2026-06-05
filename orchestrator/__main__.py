@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 
-from . import pipeline
+from . import pipeline, reporting
 from .config import load_config
 from .devin_client import DevinClient, HttpDevinClient
 from .github_client import GitHubClient, HttpGitHubClient
-from .models import RunReport
 
 
 def _parse_args() -> argparse.Namespace:
@@ -33,13 +32,9 @@ def _build_clients(mock: bool, config) -> tuple[GitHubClient, DevinClient]:
     return github, devin
 
 
-def _print_summary(report: RunReport) -> None:
-    for row in report.rows:
-        print(f"#{row.issue_number} {row.status} {row.pr_url or '-'}")
-    print(
-        f"issues={report.total} dispatched={report.dispatched} "
-        f"prs={report.pull_requests} success_rate={report.success_rate:.0%}"
-    )
+def _supplementary_metrics(devin: DevinClient) -> dict | None:
+    fetch = getattr(devin, "get_usage_metrics", None)
+    return fetch() if callable(fetch) else None
 
 
 def main() -> None:
@@ -47,7 +42,8 @@ def main() -> None:
     config = load_config(mock=args.mock)
     github, devin = _build_clients(args.mock, config)
     report = pipeline.run(github, devin, config)
-    _print_summary(report)
+    markdown = reporting.write_reports(report, config, _supplementary_metrics(devin))
+    print(markdown)
 
 
 if __name__ == "__main__":
