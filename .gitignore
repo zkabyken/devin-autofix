@@ -1,0 +1,10 @@
+.env
+report.json
+report.md
+__pycache__/
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.DS_Store
