@@ -24,6 +24,11 @@ class MockGitHubClient:
         self._comments: dict[int, list[str]] = {
             item["number"]: list(item.get("existing_comments", [])) for item in issues
         }
+        self._pulls_by_branch: dict[str, str] = {
+            f"autofix/issue-{item['number']}": item["fork_pull_request_url"]
+            for item in issues
+            if item.get("fork_pull_request_url")
+        }
 
     def list_labeled_issues(self, label: str) -> list[Issue]:
         return [issue for issue in self._issues if label in issue.labels]
@@ -33,6 +38,9 @@ class MockGitHubClient:
 
     def create_issue_comment(self, issue_number: int, body: str) -> None:
         self._comments.setdefault(issue_number, []).append(body)
+
+    def find_pull_request_for_branch(self, branch: str) -> str | None:
+        return self._pulls_by_branch.get(branch)
 
 
 class MockDevinClient:

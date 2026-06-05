@@ -27,6 +27,7 @@ class HttpDevinClient:
                 "Content-Type": "application/json",
             },
             timeout=60.0,
+            transport=httpx.HTTPTransport(retries=3),
         )
 
     def _sessions_path(self) -> str:

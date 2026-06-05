@@ -14,6 +14,8 @@ class GitHubClient(Protocol):
 
     def create_issue_comment(self, issue_number: int, body: str) -> None: ...
 
+    def find_pull_request_for_branch(self, branch: str) -> str | None: ...
+
 
 class HttpGitHubClient:
     def __init__(self, token: str, repo: str, api_base: str) -> None:
@@ -26,6 +28,7 @@ class HttpGitHubClient:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
             timeout=30.0,
+            transport=httpx.HTTPTransport(retries=3),
         )
 
     def list_labeled_issues(self, label: str) -> list[Issue]:
@@ -74,6 +77,18 @@ class HttpGitHubClient:
             json={"body": body},
         )
         response.raise_for_status()
+
+    def find_pull_request_for_branch(self, branch: str) -> str | None:
+        owner = self._repo.split("/")[0]
+        response = self._client.get(
+            f"/repos/{self._repo}/pulls",
+            params={"head": f"{owner}:{branch}", "state": "all", "per_page": 1},
+        )
+        response.raise_for_status()
+        pulls = response.json()
+        if not pulls:
+            return None
+        return pulls[0].get("html_url")
 
     def close(self) -> None:
         self._client.close()

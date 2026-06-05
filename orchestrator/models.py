@@ -5,16 +5,19 @@ from enum import Enum
 from pydantic import BaseModel
 
 
+TERMINAL_STATUSES = {"blocked", "suspended", "stopped", "finished", "expired"}
+DEFINITIVE_STATUSES = {"suspended", "stopped", "finished", "expired"}
+
+
 class SessionStatus(str, Enum):
+    RUNNING = "running"
     WORKING = "working"
-    BLOCKED = "blocked"
-    EXPIRED = "expired"
-    FINISHED = "finished"
-    SUSPEND_REQUESTED = "suspend_requested"
-    SUSPEND_REQUESTED_FRONTEND = "suspend_requested_frontend"
-    RESUME_REQUESTED = "resume_requested"
-    RESUME_REQUESTED_FRONTEND = "resume_requested_frontend"
     RESUMED = "resumed"
+    BLOCKED = "blocked"
+    SUSPENDED = "suspended"
+    STOPPED = "stopped"
+    FINISHED = "finished"
+    EXPIRED = "expired"
     UNKNOWN = "unknown"
 
     @classmethod
@@ -28,11 +31,11 @@ class SessionStatus(str, Enum):
 
     @property
     def is_terminal(self) -> bool:
-        return self in {SessionStatus.FINISHED, SessionStatus.EXPIRED}
+        return self.value in TERMINAL_STATUSES
 
     @property
-    def is_success(self) -> bool:
-        return self is SessionStatus.FINISHED
+    def is_definitive(self) -> bool:
+        return self.value in DEFINITIVE_STATUSES
 
 
 class Issue(BaseModel):

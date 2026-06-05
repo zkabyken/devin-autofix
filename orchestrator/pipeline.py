@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+import re
+import sys
 import time
 from pathlib import Path
+
+import httpx
 
 from .config import Config
 from .devin_client import DevinClient
 from .github_client import GitHubClient
-from .models import DevinSession, Issue, LedgerRow, RunReport, SessionStatus
+from .models import DevinSession, Issue, IssueComment, LedgerRow, RunReport, SessionStatus
 
-MARKER_PREFIX = "devin-autofix:issue-"
+DISPATCH_MARKER_PREFIX = "devin-autofix:issue-"
+RESULT_MARKER_PREFIX = "devin-autofix:result-issue-"
 
 
 def run(github: GitHubClient, devin: DevinClient, config: Config) -> RunReport:
     issues = github.list_labeled_issues(config.issue_label)
+    _log(f"found {len(issues)} issue(s) labeled '{config.issue_label}'")
     rows = [_handle_issue(issue, github, devin, config) for issue in issues]
     return RunReport(rows=rows)
 
@@ -23,55 +29,98 @@ def _handle_issue(
     devin: DevinClient,
     config: Config,
 ) -> LedgerRow:
-    if _already_handled(issue, github):
-        return _skipped_row(issue)
+    comments = github.list_issue_comments(issue.number)
+    session_id = _existing_session_id(comments, issue.number)
+    result_posted = _has_result_marker(comments, issue.number)
 
-    prompt = _render_playbook(issue, config)
-    title = f"autofix #{issue.number}: {issue.title}"
-    tags = [config.session_tag_prefix, config.issue_tag(issue.number)]
+    if session_id is None:
+        session_id = _dispatch(issue, github, devin, config)
+    else:
+        _log(f"#{issue.number} reconciling existing session {session_id}")
 
-    session = devin.create_session(prompt=prompt, title=title, tags=tags)
-    github.create_issue_comment(issue.number, _dispatch_comment(issue, session))
+    session, observed_seconds = _await_terminal(issue.number, devin, session_id, config)
+    duration = session.duration_seconds if session.duration_seconds is not None else observed_seconds
 
-    started = time.monotonic()
-    session = _poll(devin, session.session_id, config)
-    elapsed = (
-        session.duration_seconds
-        if session.duration_seconds is not None
-        else time.monotonic() - started
-    )
+    pr_url = session.pr_url or github.find_pull_request_for_branch(_branch(issue.number))
+    acu_cost = session.acu_cost if session.acu_cost is not None else devin.get_session_acu(session_id)
 
-    acu_cost = session.acu_cost
-    if acu_cost is None:
-        acu_cost = devin.get_session_acu(session.session_id)
-
-    github.create_issue_comment(issue.number, _result_comment(session))
+    definitive = bool(pr_url) or session.status.is_definitive
+    if definitive and not result_posted:
+        github.create_issue_comment(issue.number, _result_comment(issue, session, pr_url))
+        _log(f"#{issue.number} result comment posted (pr={pr_url or 'none'})")
 
     return LedgerRow(
         issue_number=issue.number,
         issue_title=issue.title,
-        session_id=session.session_id,
+        session_id=session_id,
         status=session.status.value,
-        pr_url=session.pr_url,
-        duration_seconds=elapsed,
+        pr_url=pr_url,
+        duration_seconds=duration,
         acu_cost=acu_cost,
     )
 
 
-def _poll(devin: DevinClient, session_id: str, config: Config) -> DevinSession:
-    deadline = time.monotonic() + config.poll_timeout_seconds
+def _dispatch(
+    issue: Issue,
+    github: GitHubClient,
+    devin: DevinClient,
+    config: Config,
+) -> str:
+    prompt = _render_playbook(issue, config)
+    title = f"autofix #{issue.number}: {issue.title}"
+    tags = [config.session_tag_prefix, config.issue_tag(issue.number)]
+    session = devin.create_session(prompt=prompt, title=title, tags=tags)
+    github.create_issue_comment(issue.number, _dispatch_comment(issue, session))
+    _log(f"#{issue.number} dispatched session {session.session_id}")
+    return session.session_id
+
+
+def _await_terminal(
+    issue_number: int,
+    devin: DevinClient,
+    session_id: str,
+    config: Config,
+) -> tuple[DevinSession, float | None]:
+    start = time.monotonic()
+    deadline = start + config.poll_timeout_seconds
+    waited = False
+    last: DevinSession | None = None
+    last_status: str | None = None
+
     while True:
-        session = devin.get_session(session_id)
-        if session.status.is_terminal:
-            return session
+        try:
+            session = devin.get_session(session_id)
+            last = session
+            if session.status.value != last_status:
+                _log(f"#{issue_number} session {session_id} status={session.status.value}")
+                last_status = session.status.value
+            if session.status.is_terminal:
+                return session, (time.monotonic() - start if waited else None)
+        except httpx.HTTPError as error:
+            _log(f"#{issue_number} poll error: {error}")
+
         if time.monotonic() >= deadline:
-            return session
+            _log(f"#{issue_number} poll timed out after {config.poll_timeout_seconds:.0f}s")
+            return last or _unknown_session(session_id), time.monotonic() - start
+
+        waited = True
         time.sleep(config.poll_interval_seconds)
 
 
-def _already_handled(issue: Issue, github: GitHubClient) -> bool:
-    marker = f"{MARKER_PREFIX}{issue.number}"
-    return any(marker in comment.body for comment in github.list_issue_comments(issue.number))
+def _existing_session_id(comments: list[IssueComment], issue_number: int) -> str | None:
+    pattern = re.compile(
+        rf"{re.escape(DISPATCH_MARKER_PREFIX)}{issue_number}:session=(\S+?)\s*-->"
+    )
+    for comment in comments:
+        match = pattern.search(comment.body)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _has_result_marker(comments: list[IssueComment], issue_number: int) -> bool:
+    marker = f"{RESULT_MARKER_PREFIX}{issue_number}"
+    return any(marker in comment.body for comment in comments)
 
 
 def _render_playbook(issue: Issue, config: Config) -> str:
@@ -89,27 +138,31 @@ def _render_playbook(issue: Issue, config: Config) -> str:
     return rendered
 
 
-def _skipped_row(issue: Issue) -> LedgerRow:
-    return LedgerRow(
-        issue_number=issue.number,
-        issue_title=issue.title,
-        session_id=None,
-        status="skipped",
-        pr_url=None,
-        duration_seconds=None,
-        acu_cost=None,
-    )
+def _branch(issue_number: int) -> str:
+    return f"autofix/issue-{issue_number}"
+
+
+def _unknown_session(session_id: str) -> DevinSession:
+    return DevinSession(session_id=session_id, status=SessionStatus.UNKNOWN)
 
 
 def _dispatch_comment(issue: Issue, session: DevinSession) -> str:
-    marker = f"<!-- {MARKER_PREFIX}{issue.number}:session={session.session_id} -->"
+    marker = f"<!-- {DISPATCH_MARKER_PREFIX}{issue.number}:session={session.session_id} -->"
     link = session.session_url or session.session_id
     return f"{marker}\nDevin autofix session dispatched: {link}"
 
 
-def _result_comment(session: DevinSession) -> str:
-    if session.status is SessionStatus.FINISHED and session.pr_url:
-        return f"Devin opened a pull request: {session.pr_url}"
-    if session.status is SessionStatus.FINISHED:
-        return "Devin finished the session but did not open a pull request."
-    return f"Devin session {session.session_id} ended with status '{session.status.value}' and no pull request."
+def _result_comment(issue: Issue, session: DevinSession, pr_url: str | None) -> str:
+    marker = f"<!-- {RESULT_MARKER_PREFIX}{issue.number} -->"
+    if pr_url:
+        body = f"Devin opened a pull request: {pr_url}"
+    else:
+        body = (
+            f"Devin session {session.session_id} ended with status "
+            f"'{session.status.value}' and no pull request."
+        )
+    return f"{marker}\n{body}"
+
+
+def _log(message: str) -> None:
+    print(f"[autofix] {message}", file=sys.stderr, flush=True)
