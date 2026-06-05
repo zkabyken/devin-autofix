@@ -20,6 +20,7 @@ class Config:
     poll_interval_seconds: float
     poll_timeout_seconds: float
     playbook_path: str
+    fixtures_path: str
 
     @property
     def session_tag_prefix(self) -> str:
@@ -48,4 +49,5 @@ def load_config(mock: bool = False) -> Config:
         poll_interval_seconds=float(os.environ.get("POLL_INTERVAL_SECONDS", "15")),
         poll_timeout_seconds=float(os.environ.get("POLL_TIMEOUT_SECONDS", "1800")),
         playbook_path=os.environ.get("PLAYBOOK_PATH", "playbooks/autofix.md").strip(),
+        fixtures_path=os.environ.get("FIXTURES_PATH", "fixtures/findings.json").strip(),
     )
