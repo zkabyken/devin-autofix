@@ -1,0 +1,18 @@
+services:
+  autofix:
+    build: .
+    env_file: .env
+    environment:
+      REPORT_JSON_PATH: /app/out/report.json
+      REPORT_MD_PATH: /app/out/report.md
+    volumes:
+      - ./out:/app/out
+
+  autofix-mock:
+    build: .
+    command: ["--mock"]
+    environment:
+      REPORT_JSON_PATH: /app/out/report.json
+      REPORT_MD_PATH: /app/out/report.md
+    volumes:
+      - ./out:/app/out
