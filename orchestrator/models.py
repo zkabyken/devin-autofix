@@ -6,23 +6,33 @@ from pydantic import BaseModel
 
 
 class SessionStatus(str, Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    WORKING = "working"
+    BLOCKED = "blocked"
     EXPIRED = "expired"
+    FINISHED = "finished"
+    SUSPEND_REQUESTED = "suspend_requested"
+    SUSPEND_REQUESTED_FRONTEND = "suspend_requested_frontend"
+    RESUME_REQUESTED = "resume_requested"
+    RESUME_REQUESTED_FRONTEND = "resume_requested_frontend"
+    RESUMED = "resumed"
+    UNKNOWN = "unknown"
+
+    @classmethod
+    def parse(cls, value: str | None) -> "SessionStatus":
+        if not value:
+            return cls.UNKNOWN
+        try:
+            return cls(value)
+        except ValueError:
+            return cls.UNKNOWN
 
     @property
     def is_terminal(self) -> bool:
-        return self in {
-            SessionStatus.COMPLETED,
-            SessionStatus.FAILED,
-            SessionStatus.EXPIRED,
-        }
+        return self in {SessionStatus.FINISHED, SessionStatus.EXPIRED}
 
     @property
     def is_success(self) -> bool:
-        return self is SessionStatus.COMPLETED
+        return self is SessionStatus.FINISHED
 
 
 class Issue(BaseModel):
@@ -40,6 +50,7 @@ class IssueComment(BaseModel):
 class DevinSession(BaseModel):
     session_id: str
     status: SessionStatus
+    session_url: str | None = None
     pr_url: str | None = None
     acu_cost: float | None = None
 
@@ -70,14 +81,10 @@ class RunReport(BaseModel):
         return sum(1 for row in self.rows if row.pr_url)
 
     @property
-    def successes(self) -> int:
-        return sum(1 for row in self.rows if row.status == SessionStatus.COMPLETED.value)
-
-    @property
     def success_rate(self) -> float:
         if self.dispatched == 0:
             return 0.0
-        return self.successes / self.dispatched
+        return self.pull_requests / self.dispatched
 
     @property
     def total_acu_cost(self) -> float:
