@@ -1,0 +1,67 @@
+name: devin-autofix
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      fork_repo:
+        description: "Repository to scan for labeled issues"
+        required: false
+        default: "zkabyken/superset"
+      issue_label:
+        description: "Issue label to act on"
+        required: false
+        default: "autofix"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devin-autofix
+  cancel-in-progress: false
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build orchestrator image
+        run: docker build -t devin-autofix .
+
+      - name: Run orchestrator
+        env:
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+          DEVIN_ORG_ID: ${{ secrets.DEVIN_ORG_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          FORK_REPO: ${{ inputs.fork_repo || 'zkabyken/superset' }}
+          ISSUE_LABEL: ${{ inputs.issue_label || 'autofix' }}
+        run: |
+          mkdir -p out
+          docker run --rm \
+            -e DEVIN_API_KEY \
+            -e DEVIN_ORG_ID \
+            -e GITHUB_TOKEN="$GH_TOKEN" \
+            -e FORK_REPO \
+            -e ISSUE_LABEL \
+            -e REPORT_JSON_PATH=/app/out/report.json \
+            -e REPORT_MD_PATH=/app/out/report.md \
+            -v "$GITHUB_WORKSPACE/out:/app/out" \
+            devin-autofix
+
+      - name: Publish step summary
+        if: always()
+        run: |
+          if [ -f out/report.md ]; then
+            cat out/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devin-autofix-report
+          path: out/
+          if-no-files-found: ignore
