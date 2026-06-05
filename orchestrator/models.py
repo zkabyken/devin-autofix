@@ -53,6 +53,7 @@ class DevinSession(BaseModel):
     session_url: str | None = None
     pr_url: str | None = None
     acu_cost: float | None = None
+    duration_seconds: float | None = None
 
 
 class LedgerRow(BaseModel):

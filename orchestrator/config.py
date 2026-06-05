@@ -17,10 +17,16 @@ class Config:
     issue_label: str
     devin_api_base: str
     github_api_base: str
+    poll_interval_seconds: float
+    poll_timeout_seconds: float
+    playbook_path: str
 
     @property
     def session_tag_prefix(self) -> str:
         return "superset-autofix"
+
+    def issue_tag(self, issue_number: int) -> str:
+        return f"{self.session_tag_prefix}-issue-{issue_number}"
 
 
 def _require(name: str, mock: bool) -> str:
@@ -39,4 +45,7 @@ def load_config(mock: bool = False) -> Config:
         issue_label=os.environ.get("ISSUE_LABEL", "autofix").strip(),
         devin_api_base=os.environ.get("DEVIN_API_BASE", "https://api.devin.ai").strip(),
         github_api_base=os.environ.get("GITHUB_API_BASE", "https://api.github.com").strip(),
+        poll_interval_seconds=float(os.environ.get("POLL_INTERVAL_SECONDS", "15")),
+        poll_timeout_seconds=float(os.environ.get("POLL_TIMEOUT_SECONDS", "1800")),
+        playbook_path=os.environ.get("PLAYBOOK_PATH", "playbooks/autofix.md").strip(),
     )
