@@ -38,6 +38,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           FORK_REPO: ${{ inputs.fork_repo || 'zkabyken/superset' }}
           ISSUE_LABEL: ${{ inputs.issue_label || 'autofix' }}
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
         run: |
           mkdir -p out
           docker run --rm \
@@ -46,6 +47,7 @@ jobs:
             -e GITHUB_TOKEN="$GH_TOKEN" \
             -e FORK_REPO \
             -e ISSUE_LABEL \
+            -e DD_API_KEY \
             -e REPORT_JSON_PATH=/app/out/report.json \
             -e REPORT_MD_PATH=/app/out/report.md \
             -v "$GITHUB_WORKSPACE/out:/app/out" \

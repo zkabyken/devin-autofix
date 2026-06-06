@@ -23,6 +23,8 @@ class Config:
     fixtures_path: str
     report_json_path: str
     report_md_path: str
+    datadog_api_key: str
+    datadog_site: str
 
     @property
     def session_tag_prefix(self) -> str:
@@ -54,4 +56,6 @@ def load_config(mock: bool = False) -> Config:
         fixtures_path=os.environ.get("FIXTURES_PATH", "fixtures/findings.json").strip(),
         report_json_path=os.environ.get("REPORT_JSON_PATH", "report.json").strip(),
         report_md_path=os.environ.get("REPORT_MD_PATH", "report.md").strip(),
+        datadog_api_key=os.environ.get("DD_API_KEY", "").strip(),
+        datadog_site=os.environ.get("DD_SITE", "datadoghq.com").strip(),
     )

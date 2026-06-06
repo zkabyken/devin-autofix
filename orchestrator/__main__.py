@@ -6,6 +6,7 @@ from . import pipeline, reporting
 from .config import load_config
 from .devin_client import DevinClient, HttpDevinClient
 from .github_client import GitHubClient, HttpGitHubClient
+from .metrics import build_metrics_sink
 
 
 def _parse_args() -> argparse.Namespace:
@@ -43,6 +44,7 @@ def main() -> None:
     github, devin = _build_clients(args.mock, config)
     report = pipeline.run(github, devin, config)
     markdown = reporting.write_reports(report, config, _supplementary_metrics(devin))
+    build_metrics_sink(config).record_run(report)
     print(markdown)
 
 
