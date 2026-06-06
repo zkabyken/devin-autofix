@@ -5,7 +5,10 @@
       "title": "Dashboard export crashes on empty filter set",
       "body": "Exporting a dashboard with no active filters raises a KeyError in the export serializer.",
       "url": "https://github.com/zkabyken/superset/issues/101",
-      "labels": ["autofix", "bug"],
+      "labels": [
+        "autofix",
+        "bug"
+      ],
       "existing_comments": [],
       "fork_pull_request_url": "https://github.com/zkabyken/superset/pull/2101",
       "session": {
@@ -13,7 +16,6 @@
         "session_url": "https://app.devin.ai/sessions/devin-session-101",
         "status": "finished",
         "pr_url": "https://github.com/zkabyken/superset/pull/2101",
-        "acu_cost": 11.5,
         "duration_seconds": 612
       }
     },
@@ -22,7 +24,9 @@
       "title": "SQL Lab autocomplete ignores schema prefix",
       "body": "Autocomplete in SQL Lab does not respect the selected schema when suggesting table names.",
       "url": "https://github.com/zkabyken/superset/issues/102",
-      "labels": ["autofix"],
+      "labels": [
+        "autofix"
+      ],
       "existing_comments": [],
       "fork_pull_request_url": "https://github.com/zkabyken/superset/pull/2102",
       "session": {
@@ -30,7 +34,6 @@
         "session_url": "https://app.devin.ai/sessions/devin-session-102",
         "status": "suspended",
         "pr_url": null,
-        "acu_cost": 8.0,
         "duration_seconds": 430
       }
     },
@@ -39,7 +42,9 @@
       "title": "Chart cache key collides across time grains",
       "body": "Two charts that differ only by time grain produce the same cache key.",
       "url": "https://github.com/zkabyken/superset/issues/103",
-      "labels": ["autofix"],
+      "labels": [
+        "autofix"
+      ],
       "existing_comments": [
         "<!-- devin-autofix:issue-103:session=devin-session-103 -->\nDevin autofix session dispatched: https://app.devin.ai/sessions/devin-session-103"
       ],
@@ -49,7 +54,6 @@
         "session_url": "https://app.devin.ai/sessions/devin-session-103",
         "status": "finished",
         "pr_url": null,
-        "acu_cost": 9.0,
         "duration_seconds": 500
       }
     },
@@ -58,7 +62,9 @@
       "title": "Intermittent timeout loading large datasets",
       "body": "Large dataset previews occasionally time out without a clear root cause.",
       "url": "https://github.com/zkabyken/superset/issues/104",
-      "labels": ["autofix"],
+      "labels": [
+        "autofix"
+      ],
       "existing_comments": [],
       "fork_pull_request_url": null,
       "session": {
@@ -66,7 +72,6 @@
         "session_url": "https://app.devin.ai/sessions/devin-session-104",
         "status": "suspended",
         "pr_url": null,
-        "acu_cost": 4.5,
         "duration_seconds": 220
       }
     }

@@ -68,15 +68,11 @@ class MockDevinClient:
             status=SessionStatus.parse(session.get("status")),
             session_url=session.get("session_url"),
             pr_url=session.get("pr_url"),
-            acu_cost=session.get("acu_cost"),
             duration_seconds=session.get("duration_seconds"),
         )
 
     def append_tags(self, session_id: str, tags: list[str]) -> None:
         return None
-
-    def get_session_acu(self, session_id: str) -> float | None:
-        return self._by_session[session_id].get("acu_cost")
 
 
 def build_mock_clients(config: Config) -> tuple[GitHubClient, DevinClient]:

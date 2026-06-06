@@ -55,7 +55,6 @@ class DevinSession(BaseModel):
     status: SessionStatus
     session_url: str | None = None
     pr_url: str | None = None
-    acu_cost: float | None = None
     duration_seconds: float | None = None
 
 
@@ -66,7 +65,6 @@ class LedgerRow(BaseModel):
     status: str
     pr_url: str | None
     duration_seconds: float | None
-    acu_cost: float | None
 
 
 class RunReport(BaseModel):
@@ -89,16 +87,6 @@ class RunReport(BaseModel):
         if self.dispatched == 0:
             return 0.0
         return self.pull_requests / self.dispatched
-
-    @property
-    def total_acu_cost(self) -> float:
-        return sum(row.acu_cost or 0.0 for row in self.rows)
-
-    @property
-    def acu_cost_per_fix(self) -> float | None:
-        if self.pull_requests == 0:
-            return None
-        return self.total_acu_cost / self.pull_requests
 
     @property
     def average_time_to_fix(self) -> float | None:

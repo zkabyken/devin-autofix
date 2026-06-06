@@ -60,7 +60,6 @@ def _handle_issue(
         issue.number, github, devin, session_id, config
     )
     duration = session.duration_seconds if session.duration_seconds is not None else observed_seconds
-    acu_cost = session.acu_cost if session.acu_cost is not None else devin.get_session_acu(session_id)
 
     definitive = bool(pr_url) or session.status.is_definitive
     if definitive and not result_posted:
@@ -74,7 +73,6 @@ def _handle_issue(
         status=session.status.value,
         pr_url=pr_url,
         duration_seconds=duration,
-        acu_cost=acu_cost,
     )
 
 
@@ -182,7 +180,6 @@ def _error_row(issue: Issue) -> LedgerRow:
         status="error",
         pr_url=None,
         duration_seconds=None,
-        acu_cost=None,
     )
 
 

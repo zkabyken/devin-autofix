@@ -16,8 +16,6 @@ def build_summary(report: RunReport, supplementary: dict | None = None) -> dict:
         "pull_requests": report.pull_requests,
         "success_rate": round(report.success_rate, 4),
         "average_time_to_fix_seconds": _round_optional(report.average_time_to_fix),
-        "total_acu_cost": round(report.total_acu_cost, 4),
-        "acu_cost_per_fix": _round_optional(report.acu_cost_per_fix),
     }
     if supplementary:
         summary["devin_metrics"] = supplementary
@@ -41,11 +39,9 @@ def render_markdown(report: RunReport, supplementary: dict | None = None) -> str
         f"- Pull requests: {summary['pull_requests']}",
         f"- Success rate: {_percent(report.success_rate)}",
         f"- Average time to fix: {_duration(report.average_time_to_fix)}",
-        f"- Total ACU cost: {summary['total_acu_cost']}",
-        f"- ACU cost per fix: {_optional_number(report.acu_cost_per_fix)}",
         "",
-        "| Issue | Status | Pull request | Duration | ACU |",
-        "| --- | --- | --- | --- | --- |",
+        "| Issue | Status | Pull request | Duration |",
+        "| --- | --- | --- | --- |",
     ]
     lines.extend(_render_row(row) for row in report.rows)
     lines.append("")
@@ -86,18 +82,11 @@ def _write_step_summary(markdown: str) -> None:
 
 def _render_row(row: LedgerRow) -> str:
     pr = f"[PR]({row.pr_url})" if row.pr_url else "-"
-    return (
-        f"| #{row.issue_number} | {row.status} | {pr} | "
-        f"{_duration(row.duration_seconds)} | {_optional_number(row.acu_cost)} |"
-    )
+    return f"| #{row.issue_number} | {row.status} | {pr} | {_duration(row.duration_seconds)} |"
 
 
 def _round_optional(value: float | None) -> float | None:
     return None if value is None else round(value, 4)
-
-
-def _optional_number(value: float | None) -> str:
-    return "-" if value is None else f"{value:g}"
 
 
 def _percent(value: float) -> str:

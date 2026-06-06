@@ -37,7 +37,6 @@ class DatadogMetricsSink:
             self._gauge("devin_autofix.dispatched", report.dispatched, timestamp),
             self._gauge("devin_autofix.pull_requests", report.pull_requests, timestamp),
             self._gauge("devin_autofix.success_rate", report.success_rate, timestamp),
-            self._gauge("devin_autofix.acu_cost", report.total_acu_cost, timestamp),
         ]
         try:
             self._client.post("/api/v2/series", json={"series": series})

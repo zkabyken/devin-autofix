@@ -18,8 +18,6 @@ class DevinClient(Protocol):
 
     def append_tags(self, session_id: str, tags: list[str]) -> None: ...
 
-    def get_session_acu(self, session_id: str) -> float | None: ...
-
 
 class HttpDevinClient:
     def __init__(self, api_key: str, org_id: str, api_base: str) -> None:
@@ -75,17 +73,6 @@ class HttpDevinClient:
         )
         response.raise_for_status()
 
-    def get_session_acu(self, session_id: str) -> float | None:
-        try:
-            response = self._send(
-                "GET",
-                f"/v3/consumption/organizations/{self._org_id}/sessions/{session_id}",
-            )
-            response.raise_for_status()
-            return _extract_acu(response.json())
-        except (httpx.HTTPError, ValueError, KeyError):
-            return None
-
     def get_usage_metrics(self) -> dict | None:
         try:
             response = self._send(
@@ -103,19 +90,16 @@ class HttpDevinClient:
 
 def _parse_session(session_id: str, payload: dict) -> DevinSession:
     status = SessionStatus.parse(payload.get("status_enum") or payload.get("status"))
-    pull_request = payload.get("pull_request") or {}
     return DevinSession(
         session_id=payload.get("session_id") or session_id,
         status=status,
         session_url=payload.get("url"),
-        pr_url=pull_request.get("url"),
-        acu_cost=_extract_acu(payload),
+        pr_url=_extract_pr_url(payload),
     )
 
 
-def _extract_acu(payload: dict) -> float | None:
-    for key in ("acu_cost", "acus", "acu", "total_acus", "consumed_acus"):
-        value = payload.get(key)
-        if isinstance(value, (int, float)):
-            return float(value)
-    return None
+def _extract_pr_url(payload: dict) -> str | None:
+    pulls = payload.get("pull_requests") or []
+    if pulls:
+        return pulls[0].get("pr_url")
+    return (payload.get("pull_request") or {}).get("url")
