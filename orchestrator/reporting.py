@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from .config import Config
@@ -58,21 +59,29 @@ def write_reports(
 ) -> str:
     document = build_document(report, supplementary)
     markdown = render_markdown(report, supplementary)
-    Path(config.report_json_path).write_text(
-        json.dumps(document, indent=2) + "\n", encoding="utf-8"
-    )
-    Path(config.report_md_path).write_text(markdown, encoding="utf-8")
+    _write_file(config.report_json_path, json.dumps(document, indent=2) + "\n")
+    _write_file(config.report_md_path, markdown)
     _write_step_summary(markdown)
     return markdown
+
+
+def _write_file(path: str, content: str) -> None:
+    try:
+        Path(path).write_text(content, encoding="utf-8")
+    except OSError as error:
+        print(f"[autofix] could not write {path}: {error}", file=sys.stderr, flush=True)
 
 
 def _write_step_summary(markdown: str) -> None:
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
         return
-    with open(path, "a", encoding="utf-8") as handle:
-        handle.write(markdown)
-        handle.write("\n")
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(markdown)
+            handle.write("\n")
+    except OSError as error:
+        print(f"[autofix] could not write step summary: {error}", file=sys.stderr, flush=True)
 
 
 def _render_row(row: LedgerRow) -> str:

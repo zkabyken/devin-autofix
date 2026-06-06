@@ -42,6 +42,7 @@ jobs:
         run: |
           mkdir -p out
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
             -e DEVIN_API_KEY \
             -e DEVIN_ORG_ID \
             -e GITHUB_TOKEN="$GH_TOKEN" \
