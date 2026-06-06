@@ -25,6 +25,7 @@ class Config:
     report_md_path: str
     datadog_api_key: str
     datadog_site: str
+    max_parallel_sessions: int
 
     @property
     def session_tag_prefix(self) -> str:
@@ -58,4 +59,5 @@ def load_config(mock: bool = False) -> Config:
         report_md_path=os.environ.get("REPORT_MD_PATH", "report.md").strip(),
         datadog_api_key=os.environ.get("DD_API_KEY", "").strip(),
         datadog_site=os.environ.get("DD_SITE", "datadoghq.com").strip(),
+        max_parallel_sessions=max(1, int(os.environ.get("MAX_PARALLEL_SESSIONS", "3"))),
     )

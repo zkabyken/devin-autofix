@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import time
 from typing import Protocol
 
 import httpx
 
 from .models import DevinSession, SessionStatus
+
+MAX_RATE_LIMIT_RETRIES = 4
+MAX_RETRY_WAIT_SECONDS = 30.0
 
 
 class DevinClient(Protocol):
@@ -33,8 +37,20 @@ class HttpDevinClient:
     def _sessions_path(self) -> str:
         return f"/v3/organizations/{self._org_id}/sessions"
 
+    def _send(self, method: str, url: str, **kwargs) -> httpx.Response:
+        for attempt in range(MAX_RATE_LIMIT_RETRIES):
+            response = self._client.request(method, url, **kwargs)
+            if response.status_code == 429 and attempt < MAX_RATE_LIMIT_RETRIES - 1:
+                retry_after = response.headers.get("Retry-After")
+                wait = float(retry_after) if retry_after else 2.0 ** attempt
+                time.sleep(min(wait, MAX_RETRY_WAIT_SECONDS))
+                continue
+            return response
+        return response
+
     def create_session(self, prompt: str, title: str, tags: list[str]) -> DevinSession:
-        response = self._client.post(
+        response = self._send(
+            "POST",
             self._sessions_path(),
             json={"prompt": prompt, "title": title, "tags": tags},
         )
@@ -47,12 +63,13 @@ class HttpDevinClient:
         )
 
     def get_session(self, session_id: str) -> DevinSession:
-        response = self._client.get(f"{self._sessions_path()}/{session_id}")
+        response = self._send("GET", f"{self._sessions_path()}/{session_id}")
         response.raise_for_status()
         return _parse_session(session_id, response.json())
 
     def append_tags(self, session_id: str, tags: list[str]) -> None:
-        response = self._client.post(
+        response = self._send(
+            "POST",
             f"{self._sessions_path()}/{session_id}/tags",
             json={"tags": tags},
         )
@@ -60,8 +77,9 @@ class HttpDevinClient:
 
     def get_session_acu(self, session_id: str) -> float | None:
         try:
-            response = self._client.get(
-                f"/v3/consumption/organizations/{self._org_id}/sessions/{session_id}"
+            response = self._send(
+                "GET",
+                f"/v3/consumption/organizations/{self._org_id}/sessions/{session_id}",
             )
             response.raise_for_status()
             return _extract_acu(response.json())
@@ -70,8 +88,8 @@ class HttpDevinClient:
 
     def get_usage_metrics(self) -> dict | None:
         try:
-            response = self._client.get(
-                f"/v3/metrics/organizations/{self._org_id}/usage"
+            response = self._send(
+                "GET", f"/v3/metrics/organizations/{self._org_id}/usage"
             )
             response.raise_for_status()
             payload = response.json()

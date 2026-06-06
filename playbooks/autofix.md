@@ -22,6 +22,8 @@ You are fixing a single GitHub issue on the fork `{{FORK_REPO}}`.
 ## Constraints
 - Keep the change minimal and focused on this issue only.
 - Do not modify CI configuration, secrets or unrelated files.
+- Work autonomously. Do not pause to ask for confirmation or further instructions.
+- Opening the pull request completes the task.
 - If the issue cannot be fixed safely, stop and explain why instead of opening a pull request.
 
 ## Result

@@ -32,5 +32,7 @@ Both modes write `report.json` and `report.md` into `./out`.
 | `GITHUB_TOKEN` | yes | | GitHub token with access to the fork |
 | `FORK_REPO` | no | `zkabyken/superset` | Repository scanned for labeled issues |
 | `ISSUE_LABEL` | no | `autofix` | Label that marks an issue for fixing |
+| `MAX_PARALLEL_SESSIONS` | no | `3` | Maximum Devin sessions handled concurrently |
+| `DD_API_KEY` | no | | Enables the Datadog metrics sink when set |
 
 Configuration is supplied through environment variables only. The scheduled and manual GitHub Action in `.github/workflows/autofix.yml` reads `DEVIN_API_KEY`, `DEVIN_ORG_ID` and a fork-scoped PAT named `GH_TOKEN` from repository secrets.
