@@ -70,10 +70,18 @@ def _handle_issue(
         issue_number=issue.number,
         issue_title=issue.title,
         session_id=session_id,
-        status=session.status.value,
+        status=_row_status(session.status, pr_url),
         pr_url=pr_url,
         duration_seconds=duration,
     )
+
+
+def _row_status(session_status: SessionStatus, pr_url: str | None) -> str:
+    if pr_url:
+        return "completed"
+    if session_status.is_terminal:
+        return "no_pull_request"
+    return "in_progress"
 
 
 def _dispatch(
